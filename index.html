@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Dívidas</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js" defer></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📊 Dashboard de Devedores</h1>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="btnReset">🔄 Resetar</button>
+                <button class="btn btn-info" id="btnExportCsv">📥 Exportar CSV</button>
+                <button class="btn btn-info" id="btnExportJson" style="background: rgba(14,116,144,0.3)">💾 Backup
+                    JSON</button>
+                <button class="btn btn-info" id="btnImport" style="background: rgba(14,116,144,0.3)">📂
+                    Restaurar</button>
+                <input type="file" id="fileInput" accept=".json" style="display: none;">
+            </div>
+        </header>
+
+        <div class="chart-section card" style="display: none;" id="chartContainer">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="height: 250px;"><canvas id="chartStatus"></canvas></div>
+                <div style="height: 250px;"><canvas id="chartValues"></canvas></div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 id="totalDividas">0</h3>
+                <p>Dívidas Cadastradas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalValor">R$ 0,00</h3>
+                <p>Valor Total a Receber</p>
+            </div>
+            <div class="stat-card" style="display: none;">
+                <h3 id="totalAtrasado">R$ 0,00</h3>
+                <p>Valor em Atraso</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="parcelasProgresso">0/0</h3>
+                <p>Parcelas Pagas no Geral</p>
+                <div class="progress-container" style="height: 6px; margin-top: 6px;">
+                    <div id="progressGeral" class="progress-bar progress-bar-paid" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>➕ Nova Dívida</h2>
+                <form id="debtForm">
+                    <input type="hidden" id="editId">
+                    <div class="form-group">
+                        <label>Nome do Devedor *</label>
+                        <input type="text" id="nome" required placeholder="Ex: João Silva">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Total (R$) *</label>
+                        <input type="number" id="valor" required step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Número de Parcelas *</label>
+                        <input type="number" id="parcelas" required min="1" placeholder="12">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição *</label>
+                        <textarea id="desc" required placeholder="Motivo da dívida..."></textarea>
+                    </div>
+                    <button type="submit" id="btnSubmitForm" class="btn btn-success" style="width: 100%">Cadastrar
+                        Dívida</button>
+                    <button type="button" id="btnCancelEdit" class="btn btn-danger"
+                        style="width: 100%; margin-top: 10px; display: none;">Cancelar
+                        Edição</button>
+                </form>
+            </div>
+
+            <div>
+                <div class="card" style="padding-bottom: 10px;">
+                    <div class="filters-bar">
+                        <div class="form-group">
+                            <input type="text" id="searchName" placeholder="🔍 Buscar por nome...">
+                        </div>
+                        <div class="form-group">
+                            <select id="filterStatus">
+                                <option value="todos">Todos os Status</option>
+                                <option value="aberto">Abertos e Pagando</option>
+                                <option value="pago">✅ Concluídos (Pagos)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>📋 Lista de Dívidas</h2>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="debtTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Valor Estimado</th>
+                                    <th>Progresso</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debtTableBody"></tbody>
+                        </table>
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <p>📝 Nenhuma dívida correspondente encontrada</p>
+                            <p>Verifique os filtros ou cadastre novas dívidas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Dívida -->
+    <div id="modalDetails" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔍 Detalhes da Dívida</h2>
+                <button class="modal-close" id="btnCloseDetails">✕</button>
+            </div>
+            <div class="form-group"><strong>Nome:</strong> <span id="detailNome"></span></div>
+            <div class="form-group"><strong>Valor Total:</strong> <span id="detailValor"></span></div>
+            <div class="form-group"><strong>Por Valor Parcela:</strong> <span id="detailValorParcela"></span></div>
+            <div class="form-group"><strong>Descrição:</strong> <span id="detailDesc"></span></div>
+
+            <div style="margin-top: 20px;">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 5px;">
+                    Gerenciar Pagamentos</h4>
+                <div id="paymentControls"></div>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 5px;">
+                    📜 Histórico Recente</h4>
+                <div id="historyList" class="history-list"></div>
+            </div>
+
+            <div
+                style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border-subtle); padding-top: 15px;">
+                <button class="btn btn-primary btn-sm" id="btnEditDebt">✏️ Editar</button>
+                <button class="btn btn-danger btn-sm" id="btnDeleteDebt">🗑️ Deletar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação Genérico -->
+    <div id="modalConfirm" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 id="confirmTitle" style="margin-bottom: 15px; color: var(--text-primary);">Configurações</h2>
+            <p id="confirmMessage" style="margin-bottom: 25px; color: var(--text-muted);"></p>
+            <div style="display: flex; justify-content: center; gap: 15px;">
+                <button class="btn btn-danger" id="confirmBtnCancel">Cancelar</button>
+                <button class="btn btn-success" id="confirmBtnOk">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+</body>
+
+</html>
