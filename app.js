@@ -95,6 +95,7 @@ function renderDebts() {
 
         return `<tr>
             <td><strong>${debt.nome}</strong></td>
+            <td><span class="status status-${debt.tipo || 'devedor'}">${(debt.tipo || 'devedor').toUpperCase()}</span></td>
             <td>${formatMoney(debt.valor)}</td>
             <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -128,17 +129,33 @@ function renderDebts() {
 
 function updateStats() {
     document.getElementById('totalDividas').textContent = debts.length;
-    let totalValor = 0;
+    let totalReceber = 0;
+    let totalPagar = 0;
     let totalParcelas = 0;
     let totalPagas = 0;
 
     debts.forEach(debt => {
-        totalValor += parseFloat(debt.valor) || 0;
+        const val = parseFloat(debt.valor) || 0;
+        if (debt.tipo === 'divida') {
+            totalPagar += val;
+        } else {
+            totalReceber += val;
+        }
         totalParcelas += parseInt(debt.parcelas) || 0;
         totalPagas += parseInt(debt.parcelsPagas) || 0;
     });
 
-    document.getElementById('totalValor').textContent = formatMoney(totalValor);
+    const totalValorElem = document.getElementById('totalValor');
+    if (totalValorElem) {
+        // Se houver dívidas, mostra o saldo ou individual? 
+        // Vamos atualizar o HTML pra mostrar ambos se possível, ou apenas ajustar o texto do existente.
+        totalValorElem.textContent = formatMoney(totalReceber);
+    }
+
+    // Se existir o elemento de total a pagar (que vou adicionar no HTML)
+    const pagarElem = document.getElementById('totalPagar');
+    if (pagarElem) pagarElem.textContent = formatMoney(totalPagar);
+
     document.getElementById('parcelasProgresso').textContent = `${totalPagas}/${totalParcelas}`;
     const pgGlobal = totalParcelas > 0 ? (totalPagas / totalParcelas) * 100 : 0;
     document.getElementById('progressGeral').style.width = `${pgGlobal}%`;
@@ -148,6 +165,7 @@ function handleDebtSubmit(e) {
     e.preventDefault();
     const editId = document.getElementById('editId').value;
     const divida = {
+        tipo: document.getElementById('tipo').value,
         nome: document.getElementById('nome').value,
         valor: parseFloat(document.getElementById('valor').value),
         parcelas: parseInt(document.getElementById('parcelas').value),
@@ -162,8 +180,8 @@ function handleDebtSubmit(e) {
             divida.parcelsPagas = Math.min(debts[index].parcelsPagas || 0, divida.parcelas);
             divida.historico = debts[index].historico || [];
             debts[index] = divida;
-            addHistoryLog(index, 'Dívida Atualizada (Edição)');
-            showToast('Dívida atualizada!', 'success');
+            addHistoryLog(index, 'Registro Atualizado (Edição)');
+            showToast('Registro atualizado!', 'success');
         }
         cancelEdit();
     } else {
@@ -171,8 +189,8 @@ function handleDebtSubmit(e) {
         divida.parcelsPagas = 0;
         divida.historico = [];
         debts.push(divida);
-        addHistoryLog(debts.length - 1, 'Dívida Criada');
-        showToast('Nova dívida adicionada!', 'success');
+        addHistoryLog(debts.length - 1, 'Registro Criado');
+        showToast('Novo registro adicionado!', 'success');
         e.target.reset();
     }
 
@@ -186,6 +204,7 @@ function prepararEdicao() {
     if (currentDebtIndex === null) return;
     const debt = debts[currentDebtIndex];
     document.getElementById('editId').value = debt.id;
+    document.getElementById('tipo').value = debt.tipo || 'devedor';
     document.getElementById('nome').value = debt.nome;
     document.getElementById('valor').value = debt.valor;
     document.getElementById('parcelas').value = debt.parcelas;
@@ -199,7 +218,7 @@ function prepararEdicao() {
 function cancelEdit() {
     document.getElementById('editId').value = '';
     document.getElementById('debtForm').reset();
-    document.getElementById('btnSubmitForm').textContent = 'Cadastrar Dívida';
+    document.getElementById('btnSubmitForm').textContent = 'Cadastrar';
     document.getElementById('btnCancelEdit').style.display = 'none';
 }
 
@@ -208,6 +227,8 @@ function verDetalhes(index) {
     const debt = debts[index];
     const valorParc = debt.valor / debt.parcelas;
 
+    document.getElementById('detailTipo').textContent = (debt.tipo || 'devedor').toUpperCase();
+    document.getElementById('detailTipo').className = `status status-${debt.tipo || 'devedor'}`;
     document.getElementById('detailNome').textContent = debt.nome;
     document.getElementById('detailValor').textContent = formatMoney(debt.valor);
     document.getElementById('detailValorParcela').textContent = formatMoney(valorParc);
@@ -385,7 +406,7 @@ function updateCharts() {
             maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom', labels: { color: '#9ca3af' } },
-                title: { display: true, text: 'Status das Dívidas', color: '#e5e7eb' }
+                title: { display: true, text: 'Status dos Registros', color: '#e5e7eb' }
             }
         }
     });
@@ -413,7 +434,7 @@ function updateCharts() {
             },
             plugins: {
                 legend: { display: false },
-                title: { display: true, text: 'Maiores Devedores (Top 5)', color: '#e5e7eb' }
+                title: { display: true, text: 'Maiores Valores (Top 5)', color: '#e5e7eb' }
             }
         }
     });

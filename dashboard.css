@@ -338,6 +338,18 @@ tr:hover {
     border: 1px solid rgba(34, 197, 94, 0.55);
 }
 
+.status-devedor {
+    background: rgba(6, 182, 212, 0.12);
+    color: #bae6fd;
+    border: 1px solid rgba(6, 182, 212, 0.5);
+}
+
+.status-divida {
+    background: rgba(244, 63, 94, 0.12);
+    color: #fecdd3;
+    border: 1px solid rgba(244, 63, 94, 0.5);
+}
+
 .progress-container {
     background: rgba(15, 23, 42, 0.9);
     border-radius: 999px;
