@@ -440,24 +440,30 @@ function updateCharts() {
     });
 }
 
+const getExportDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}`;
+};
+
 function exportData(type) {
     if (debts.length === 0) return showToast('Nada para exportar.', 'error');
+    const dateStr = getExportDate();
 
     if (type === 'json') {
         const blob = new Blob([JSON.stringify(debts, null, 2)], { type: 'application/json' });
-        triggerDownload(blob, 'backup_devedores.json');
+        triggerDownload(blob, `backup_devedores_${dateStr}.json`);
         showToast('Exportação JSON concluída!', 'success');
     } else {
         // 1. Exportar Dívidas (Geral)
-        let csvDebts = '\uFEFFId;Nome;Valor Total;Parcelas Totais;Parcelas Pagas;Status;Descrição\n';
+        let csvDebts = '\uFEFFId;Tipo;Nome;Valor Total;Parcelas Totais;Parcelas Pagas;Status;Descrição\n';
         debts.forEach(d => {
-            csvDebts += `"${d.id}";"${d.nome}";"${d.valor}";"${d.parcelas}";"${d.parcelsPagas}";"${calcularStatus(d)}";"${(d.desc || '').replace(/"/g, '""')}"\n`;
+            csvDebts += `"${d.id}";"${d.tipo || 'devedor'}";"${d.nome}";"${d.valor}";"${d.parcelas}";"${d.parcelsPagas}";"${calcularStatus(d)}";"${(d.desc || '').replace(/"/g, '""')}"\n`;
         });
-        triggerDownload(new Blob([csvDebts], { type: 'text/csv;charset=utf-8' }), 'lista_devedores.csv');
+        triggerDownload(new Blob([csvDebts], { type: 'text/csv;charset=utf-8' }), `lista_devedores_${dateStr}.csv`);
 
         // 2. Exportar Histórico de Pagamentos (Referenciado)
         setTimeout(() => {
-            let csvHistory = '\uFEFFID Divida;Nome Devedor;Ação;Data;ID Registro\n';
+            let csvHistory = '\uFEFFID Registro;Nome Devedor/Credor;Ação;Data;ID Registro Hist\n';
             debts.forEach(d => {
                 if (d.historico && d.historico.length > 0) {
                     d.historico.forEach(h => {
@@ -465,7 +471,7 @@ function exportData(type) {
                     });
                 }
             });
-            triggerDownload(new Blob([csvHistory], { type: 'text/csv;charset=utf-8' }), 'historico_pagamentos.csv');
+            triggerDownload(new Blob([csvHistory], { type: 'text/csv;charset=utf-8' }), `historico_pagamentos_${dateStr}.csv`);
             showToast('CSVs (Lista e Histórico) exportados!', 'success');
         }, 500);
     }
