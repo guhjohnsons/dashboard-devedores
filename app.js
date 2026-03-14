@@ -1,11 +1,13 @@
 let debts = JSON.parse(localStorage.getItem('debtManagerDebts')) || [];
 let currentDebtIndex = null;
 let charts = { status: null, values: null };
+let currentSort = { campo: null, direcao: 'asc' };
 
-// Garantir ID e histórico
+// Garantir ID, histórico e dataCriacao
 debts = debts.map(d => {
     if (!d.id) d.id = Date.now() + Math.floor(Math.random() * 1000);
     if (!d.historico) d.historico = [];
+    if (!d.dataCriacao) d.dataCriacao = new Date().toISOString();
     return d;
 });
 saveDebts();
@@ -17,6 +19,11 @@ const formatDateObj = (dateStringISO) => {
     return new Date(dateStringISO).toLocaleString('pt-BR');
 };
 
+const formatDateShort = (dateStringISO) => {
+    if (!dateStringISO) return '--/--/--';
+    return new Date(dateStringISO).toLocaleDateString('pt-BR');
+};
+
 function calcularStatus(debt) {
     const totalParc = parseInt(debt.parcelas) || 0;
     const pagas = parseInt(debt.parcelsPagas) || 0;
@@ -26,7 +33,7 @@ function calcularStatus(debt) {
 
 function addHistoryLog(debtIndex, actionMessage) {
     if (!debts[debtIndex].historico) debts[debtIndex].historico = [];
-    debts[debtIndex].historico.unshift({ // Novo registro no topo
+    debts[debtIndex].historico.unshift({
         id_registro: Date.now() + Math.random().toString(36).substr(2, 5),
         acao: actionMessage,
         data: new Date().toISOString()
@@ -51,6 +58,7 @@ function initEventListeners() {
     // Filters
     document.getElementById('searchName').addEventListener('keyup', renderDebts);
     document.getElementById('filterStatus').addEventListener('change', renderDebts);
+    document.getElementById('filterTipo').addEventListener('change', renderDebts);
 
     // Form
     document.getElementById('debtForm').addEventListener('submit', handleDebtSubmit);
@@ -60,6 +68,42 @@ function initEventListeners() {
     document.getElementById('btnCloseDetails').addEventListener('click', () => fecharModal('modalDetails'));
     document.getElementById('btnEditDebt').addEventListener('click', prepararEdicao);
     document.getElementById('btnDeleteDebt').addEventListener('click', requestDelete);
+
+    // Fechar modal ao clicar no overlay (#2)
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                fecharModal(overlay.id);
+            }
+        });
+    });
+
+    // Atalho Escape para fechar modais (#13)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                fecharModal(modal.id);
+            });
+        }
+    });
+
+    // Ordenação de tabela (#6)
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const campo = th.dataset.sort;
+            if (currentSort.campo === campo) {
+                currentSort.direcao = currentSort.direcao === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.campo = campo;
+                currentSort.direcao = 'asc';
+            }
+            // Atualizar visual dos cabeçalhos
+            document.querySelectorAll('th.sortable').forEach(h => h.classList.remove('sort-active'));
+            th.classList.add('sort-active');
+            th.querySelector('.sort-icon').textContent = currentSort.direcao === 'asc' ? '↑' : '↓';
+            renderDebts();
+        });
+    });
 }
 
 function renderDebts() {
@@ -67,15 +111,44 @@ function renderDebts() {
     const emptyState = document.getElementById('emptyState');
     const searchName = document.getElementById('searchName').value.toLowerCase();
     const filterStatus = document.getElementById('filterStatus').value;
+    const filterTipo = document.getElementById('filterTipo').value;
 
-    const filtered = debts.filter(debt => {
+    let filtered = debts.filter(debt => {
         const status = calcularStatus(debt);
         const matchName = debt.nome.toLowerCase().includes(searchName);
         let matchStatus = true;
         if (filterStatus === 'aberto') matchStatus = (status === 'aberto' || status === 'pagando');
         else if (filterStatus === 'pago') matchStatus = status === 'pago';
-        return matchName && matchStatus;
+        let matchTipo = true;
+        if (filterTipo !== 'todos') matchTipo = (debt.tipo || 'devedor') === filterTipo;
+        return matchName && matchStatus && matchTipo;
     });
+
+    // Ordenação (#6)
+    if (currentSort.campo) {
+        filtered.sort((a, b) => {
+            let valA, valB;
+            switch (currentSort.campo) {
+                case 'nome':
+                    valA = a.nome.toLowerCase();
+                    valB = b.nome.toLowerCase();
+                    break;
+                case 'valor':
+                    valA = parseFloat(a.valor) || 0;
+                    valB = parseFloat(b.valor) || 0;
+                    break;
+                case 'progresso':
+                    valA = (a.parcelsPagas || 0) / (parseInt(a.parcelas) || 1);
+                    valB = (b.parcelsPagas || 0) / (parseInt(b.parcelas) || 1);
+                    break;
+                default:
+                    return 0;
+            }
+            if (valA < valB) return currentSort.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSort.direcao === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
 
     if (filtered.length === 0) {
         tbody.innerHTML = '';
@@ -106,6 +179,7 @@ function renderDebts() {
                 <small>${pagas}/${total} (${perc}%)</small>
             </td>
             <td><span class="status status-${status}">${status.toUpperCase()}</span></td>
+            <td><small>${formatDateShort(debt.dataCriacao)}</small></td>
             <td>
                 <div style="display: flex; gap: 6px;">
                     <button class="btn btn-success btn-sm btn-quick-add" data-index="${realIndex}" ${isPago ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>+1 Parc.</button>
@@ -122,13 +196,20 @@ function renderDebts() {
     document.querySelectorAll('.btn-quick-add').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const index = parseInt(e.target.dataset.index);
+            // Micro-feedback visual (#7)
+            e.target.classList.remove('btn-quick-flash');
+            void e.target.offsetWidth; // force reflow
+            e.target.classList.add('btn-quick-flash');
             adicionarParcela(index, 1);
         });
     });
 }
 
 function updateStats() {
-    document.getElementById('totalDividas').textContent = debts.length;
+    const qtdDevedores = debts.filter(d => (d.tipo || 'devedor') === 'devedor').length;
+    const qtdDividas = debts.filter(d => d.tipo === 'divida').length;
+    document.getElementById('totalDevedores').textContent = qtdDevedores;
+    document.getElementById('totalDividas').textContent = qtdDividas;
     let totalReceber = 0;
     let totalPagar = 0;
     let totalParcelas = 0;
@@ -147,12 +228,9 @@ function updateStats() {
 
     const totalValorElem = document.getElementById('totalValor');
     if (totalValorElem) {
-        // Se houver dívidas, mostra o saldo ou individual? 
-        // Vamos atualizar o HTML pra mostrar ambos se possível, ou apenas ajustar o texto do existente.
         totalValorElem.textContent = formatMoney(totalReceber);
     }
 
-    // Se existir o elemento de total a pagar (que vou adicionar no HTML)
     const pagarElem = document.getElementById('totalPagar');
     if (pagarElem) pagarElem.textContent = formatMoney(totalPagar);
 
@@ -179,6 +257,7 @@ function handleDebtSubmit(e) {
             divida.id = idToEdit;
             divida.parcelsPagas = Math.min(debts[index].parcelsPagas || 0, divida.parcelas);
             divida.historico = debts[index].historico || [];
+            divida.dataCriacao = debts[index].dataCriacao || new Date().toISOString();
             debts[index] = divida;
             addHistoryLog(index, 'Registro Atualizado (Edição)');
             showToast('Registro atualizado!', 'success');
@@ -188,6 +267,7 @@ function handleDebtSubmit(e) {
         divida.id = Date.now() + Math.floor(Math.random() * 1000);
         divida.parcelsPagas = 0;
         divida.historico = [];
+        divida.dataCriacao = new Date().toISOString();
         debts.push(divida);
         addHistoryLog(debts.length - 1, 'Registro Criado');
         showToast('Novo registro adicionado!', 'success');
@@ -233,6 +313,7 @@ function verDetalhes(index) {
     document.getElementById('detailValor').textContent = formatMoney(debt.valor);
     document.getElementById('detailValorParcela').textContent = formatMoney(valorParc);
     document.getElementById('detailDesc').textContent = debt.desc;
+    document.getElementById('detailDataCriacao').textContent = formatDateObj(debt.dataCriacao);
 
     renderPaymentControls();
     renderHistory();
@@ -411,8 +492,9 @@ function updateCharts() {
         }
     });
 
-    // Values Chart (Top 5)
+    // Values Chart (Top 5) — Cores por tipo (#11)
     const sorted = [...debts].sort((a, b) => b.valor - a.valor).slice(0, 5);
+    const barColors = sorted.map(d => (d.tipo || 'devedor') === 'devedor' ? '#06b6d4' : '#f43f5e');
     const ctxValues = document.getElementById('chartValues').getContext('2d');
     if (charts.values) charts.values.destroy();
     charts.values = new Chart(ctxValues, {
@@ -422,7 +504,7 @@ function updateCharts() {
             datasets: [{
                 label: 'Valor Total',
                 data: sorted.map(d => d.valor),
-                backgroundColor: '#3b82f6'
+                backgroundColor: barColors
             }]
         },
         options: {
@@ -434,7 +516,7 @@ function updateCharts() {
             },
             plugins: {
                 legend: { display: false },
-                title: { display: true, text: 'Maiores Valores (Top 5)', color: '#e5e7eb' }
+                title: { display: true, text: 'Maiores Valores (Top 5) — 🟦 Devedor | 🟥 Dívida', color: '#e5e7eb' }
             }
         }
     });
@@ -455,9 +537,9 @@ function exportData(type) {
         showToast('Exportação JSON concluída!', 'success');
     } else {
         // 1. Exportar Dívidas (Geral)
-        let csvDebts = '\uFEFFId;Tipo;Nome;Valor Total;Parcelas Totais;Parcelas Pagas;Status;Descrição\n';
+        let csvDebts = '\uFEFFId;Tipo;Nome;Valor Total;Parcelas Totais;Parcelas Pagas;Status;Descrição;Data Cadastro\n';
         debts.forEach(d => {
-            csvDebts += `"${d.id}";"${d.tipo || 'devedor'}";"${d.nome}";"${d.valor}";"${d.parcelas}";"${d.parcelsPagas}";"${calcularStatus(d)}";"${(d.desc || '').replace(/"/g, '""')}"\n`;
+            csvDebts += `"${d.id}";"${d.tipo || 'devedor'}";"${d.nome}";"${d.valor}";"${d.parcelas}";"${d.parcelsPagas}";"${calcularStatus(d)}";"${(d.desc || '').replace(/"/g, '""')}";"${formatDateObj(d.dataCriacao)}"\n`;
         });
         triggerDownload(new Blob([csvDebts], { type: 'text/csv;charset=utf-8' }), `lista_devedores_${dateStr}.csv`);
 
@@ -491,17 +573,37 @@ function importData(event) {
     reader.onload = (e) => {
         try {
             const data = JSON.parse(e.target.result);
-            if (!Array.isArray(data)) throw new Error();
+            if (!Array.isArray(data)) throw new Error('Dados não são um array.');
+
+            // Validação de campos obrigatórios (#1)
+            const camposObrigatorios = ['nome', 'valor', 'parcelas'];
+            for (let i = 0; i < data.length; i++) {
+                for (const campo of camposObrigatorios) {
+                    if (data[i][campo] === undefined || data[i][campo] === null || data[i][campo] === '') {
+                        throw new Error(`Item ${i + 1} está com o campo "${campo}" ausente ou vazio.`);
+                    }
+                }
+                // Garantir campos padrão
+                if (!data[i].id) data[i].id = Date.now() + i + Math.floor(Math.random() * 1000);
+                if (!data[i].historico) data[i].historico = [];
+                if (!data[i].parcelsPagas && data[i].parcelsPagas !== 0) data[i].parcelsPagas = 0;
+                if (!data[i].tipo) data[i].tipo = 'devedor';
+                if (!data[i].desc) data[i].desc = '';
+                if (!data[i].dataCriacao) data[i].dataCriacao = new Date().toISOString();
+            }
+
             confirmAction('Importar', 'Isso substituirá seus dados atuais. Continuar?', () => {
                 debts = data;
                 saveAndRefresh();
                 showToast('Dados restaurados!', 'success');
             });
-        } catch {
-            showToast('Arquivo JSON inválido.', 'error');
+        } catch (err) {
+            showToast(`Arquivo inválido: ${err.message}`, 'error');
         }
     };
     reader.readAsText(file);
+    // Reset do input de arquivo (#4)
+    event.target.value = '';
 }
 
 // UI Helpers

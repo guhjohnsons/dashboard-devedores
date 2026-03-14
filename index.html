@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard para gerenciamento de devedores e dívidas com controle de parcelas, exportação e histórico.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <title>Dashboard de Devedores/Dívidas</title>
     <link rel="stylesheet" href="dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,28 +16,30 @@
     <div class="container">
         <header class="header">
             <h1>📊 Dashboard de Devedores/Dívidas</h1>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div class="header-actions">
                 <button class="btn btn-primary" id="btnReset">🔄 Resetar</button>
                 <button class="btn btn-info" id="btnExportCsv">📥 Exportar CSV</button>
-                <button class="btn btn-info" id="btnExportJson" style="background: rgba(14,116,144,0.3)">💾 Backup
-                    JSON</button>
-                <button class="btn btn-info" id="btnImport" style="background: rgba(14,116,144,0.3)">📂
-                    Restaurar</button>
+                <button class="btn btn-info btn-info-alt" id="btnExportJson">💾 Backup JSON</button>
+                <button class="btn btn-info btn-info-alt" id="btnImport">📂 Restaurar</button>
                 <input type="file" id="fileInput" accept=".json" style="display: none;">
             </div>
         </header>
 
         <div class="chart-section card" style="display: none;" id="chartContainer">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div style="height: 250px;"><canvas id="chartStatus"></canvas></div>
-                <div style="height: 250px;"><canvas id="chartValues"></canvas></div>
+            <div class="charts-grid">
+                <div class="chart-wrapper"><canvas id="chartStatus"></canvas></div>
+                <div class="chart-wrapper"><canvas id="chartValues"></canvas></div>
             </div>
         </div>
 
         <div class="stats-grid">
             <div class="stat-card">
+                <h3 id="totalDevedores">0</h3>
+                <p>Devedores (Eu recebo)</p>
+            </div>
+            <div class="stat-card">
                 <h3 id="totalDividas">0</h3>
-                <p>Dívidas Cadastradas</p>
+                <p>Dívidas (Eu pago)</p>
             </div>
             <div class="stat-card">
                 <h3 id="totalValor">R$ 0,00</h3>
@@ -44,10 +48,6 @@
             <div class="stat-card">
                 <h3 id="totalPagar">R$ 0,00</h3>
                 <p>Total a Pagar</p>
-            </div>
-            <div class="stat-card" style="display: none;">
-                <h3 id="totalAtrasado">R$ 0,00</h3>
-                <p>Valor em Atraso</p>
             </div>
             <div class="stat-card">
                 <h3 id="parcelasProgresso">0/0</h3>
@@ -101,6 +101,13 @@
                             <input type="text" id="searchName" placeholder="🔍 Buscar por nome...">
                         </div>
                         <div class="form-group">
+                            <select id="filterTipo">
+                                <option value="todos">Todos os Tipos</option>
+                                <option value="devedor">Devedor (Eu recebo)</option>
+                                <option value="divida">Dívida (Eu pago)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <select id="filterStatus">
                                 <option value="todos">Todos os Status</option>
                                 <option value="aberto">Abertos e Pagando</option>
@@ -111,7 +118,7 @@
                 </div>
 
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-title-row">
                         <h2>📋 Lista de Registros</h2>
                     </div>
 
@@ -119,11 +126,12 @@
                         <table id="debtTable">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
+                                    <th class="sortable" data-sort="nome">Nome <span class="sort-icon">⇅</span></th>
                                     <th>Tipo</th>
-                                    <th>Valor Estimado</th>
-                                    <th>Progresso</th>
+                                    <th class="sortable" data-sort="valor">Valor Estimado <span class="sort-icon">⇅</span></th>
+                                    <th class="sortable" data-sort="progresso">Progresso <span class="sort-icon">⇅</span></th>
                                     <th>Status</th>
+                                    <th>Data Cadastro</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -151,21 +159,19 @@
             <div class="form-group"><strong>Valor Total:</strong> <span id="detailValor"></span></div>
             <div class="form-group"><strong>Por Valor Parcela:</strong> <span id="detailValorParcela"></span></div>
             <div class="form-group"><strong>Descrição:</strong> <span id="detailDesc"></span></div>
+            <div class="form-group"><strong>Data de Cadastro:</strong> <span id="detailDataCriacao"></span></div>
 
             <div style="margin-top: 20px;">
-                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 5px;">
-                    Gerenciar Pagamentos</h4>
+                <h4 class="section-title">Gerenciar Pagamentos</h4>
                 <div id="paymentControls"></div>
             </div>
 
             <div style="margin-top: 25px;">
-                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 5px;">
-                    📜 Histórico Recente</h4>
+                <h4 class="section-title">📜 Histórico Recente</h4>
                 <div id="historyList" class="history-list"></div>
             </div>
 
-            <div
-                style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border-subtle); padding-top: 15px;">
+            <div class="modal-footer">
                 <button class="btn btn-primary btn-sm" id="btnEditDebt">✏️ Editar</button>
                 <button class="btn btn-danger btn-sm" id="btnDeleteDebt">🗑️ Deletar</button>
             </div>
@@ -174,10 +180,10 @@
 
     <!-- Modal de Confirmação Genérico -->
     <div id="modalConfirm" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <h2 id="confirmTitle" style="margin-bottom: 15px; color: var(--text-primary);">Configurações</h2>
-            <p id="confirmMessage" style="margin-bottom: 25px; color: var(--text-muted);"></p>
-            <div style="display: flex; justify-content: center; gap: 15px;">
+        <div class="modal-content modal-confirm-content">
+            <h2 id="confirmTitle">Configurações</h2>
+            <p id="confirmMessage" class="confirm-message"></p>
+            <div class="confirm-actions">
                 <button class="btn btn-danger" id="confirmBtnCancel">Cancelar</button>
                 <button class="btn btn-success" id="confirmBtnOk">Confirmar</button>
             </div>

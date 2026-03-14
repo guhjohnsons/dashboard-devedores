@@ -34,6 +34,7 @@ body {
     margin: 0 auto;
 }
 
+/* Header */
 .header {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
     padding: 20px 24px;
@@ -62,6 +63,13 @@ body {
     font-size: 28px;
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Buttons */
 .btn {
     padding: 10px 20px;
     border-radius: 999px;
@@ -134,17 +142,34 @@ body {
     background: linear-gradient(135deg, #0e7490, #155e75);
 }
 
+.btn-info-alt {
+    background: rgba(14, 116, 144, 0.3);
+}
+
 .btn-sm {
     padding: 8px 16px;
     font-size: 14px;
 }
 
+/* Quick add button flash animation */
+@keyframes quickFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); box-shadow: 0 0 12px rgba(34, 197, 94, 0.6); }
+    100% { transform: scale(1); }
+}
+
+.btn-quick-flash {
+    animation: quickFlash 0.35s ease;
+}
+
+/* Grid layout */
 .grid {
     display: grid;
     grid-template-columns: minmax(320px, 380px) 1fr;
     gap: 20px;
 }
 
+/* Cards */
 .card {
     background: var(--bg-card);
     border-radius: 16px;
@@ -174,7 +199,6 @@ body {
     }
 }
 
-
 .card h2 {
     margin-bottom: 18px;
     padding-bottom: 10px;
@@ -187,6 +211,13 @@ body {
     color: var(--text-primary);
 }
 
+.card-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Form */
 .form-group {
     margin-bottom: 14px;
 }
@@ -241,6 +272,7 @@ select option {
     background: radial-gradient(circle at top, rgba(37, 99, 235, 0.35), rgba(15, 23, 42, 0.95));
 }
 
+/* Stats */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -271,6 +303,7 @@ select option {
     font-size: 15px;
 }
 
+/* Table */
 .table-container {
     overflow-x: auto;
     border-radius: 12px;
@@ -300,6 +333,28 @@ th {
     font-size: 13px;
 }
 
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+th.sortable:hover {
+    color: var(--accent);
+}
+
+th.sortable .sort-icon {
+    font-size: 11px;
+    opacity: 0.4;
+    margin-left: 4px;
+    transition: opacity 0.15s ease;
+}
+
+th.sortable.sort-active .sort-icon {
+    opacity: 1;
+    color: var(--accent);
+}
+
 tbody tr {
     transition: background-color 0.12s ease;
 }
@@ -308,6 +363,7 @@ tr:hover {
     background: rgba(15, 23, 42, 0.92);
 }
 
+/* Status badges */
 .status {
     padding: 5px 12px;
     border-radius: 999px;
@@ -350,6 +406,7 @@ tr:hover {
     border: 1px solid rgba(244, 63, 94, 0.5);
 }
 
+/* Progress */
 .progress-container {
     background: rgba(15, 23, 42, 0.9);
     border-radius: 999px;
@@ -411,6 +468,7 @@ tr:hover {
     padding-right: 4px;
 }
 
+/* History */
 .history-list {
     max-height: 200px;
     overflow-y: auto;
@@ -441,12 +499,57 @@ tr:hover {
     color: var(--text-muted);
 }
 
+/* Charts */
 .chart-section {
     margin-bottom: 24px;
     padding: 24px;
 }
 
-/* Custom scrollbar for containers */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.chart-wrapper {
+    height: 250px;
+}
+
+/* Section titles (used in modals) */
+.section-title {
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 5px;
+}
+
+/* Modal footer */
+.modal-footer {
+    margin-top: 25px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 15px;
+}
+
+/* Confirm modal */
+.modal-confirm-content {
+    max-width: 400px;
+    text-align: center;
+}
+
+.confirm-message {
+    margin-bottom: 25px;
+    color: var(--text-muted);
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* Custom scrollbar */
 #parcelasContainer::-webkit-scrollbar,
 .history-list::-webkit-scrollbar {
     width: 6px;
@@ -457,7 +560,6 @@ tr:hover {
     background: var(--border-subtle);
     border-radius: 10px;
 }
-
 
 /* Modals */
 .modal-overlay {
@@ -586,9 +688,10 @@ tr:hover {
 .filters-bar .form-group {
     margin: 0;
     flex: 1;
-    min-width: 200px;
+    min-width: 180px;
 }
 
+/* Responsive */
 @media (max-width: 960px) {
     body {
         padding: 16px;
@@ -603,11 +706,22 @@ tr:hover {
         align-items: flex-start;
     }
 
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .header-actions .btn {
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+
     .filters-bar {
         flex-direction: column;
     }
 
     .filters-bar .form-group {
         width: 100%;
+        min-width: unset;
     }
 }
