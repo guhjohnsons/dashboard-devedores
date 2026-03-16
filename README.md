@@ -8,12 +8,13 @@
 
 Este dashboard permite que você:
 
-- Cadastre **devedores (o que você recebe)** e **dívidas (o que você paga)**
-- Controle o progresso de pagamento por parcela
-- Veja **estatísticas em tempo real** (total a receber/pagar, progresso total)
-- Visualize **gráficos** de status e maiores valores (Chart.js)
+- Cadastre **devedores (o que você recebe)** e **dívidas (o que você paga)** via um moderno formulário **Off-Canvas (Gaveta Lateral)**.
+- Controle o progresso de pagamento por parcela com transições suaves e design premium.
+- Veja **estatísticas em tempo real** (total a receber/pagar, progresso absoluto).
+- Ferramenta de Análises Inteligente: Gráfico de Balanço Geral (Receber vs Pagar) e Gráfico de Top 5 Dinâmico (Horizontal com Chart.js).
+- Layout focado em acessibilidade **WCAG AA** para Dark Mode nativo (Tipografia Outfit + Plus Jakarta Sans).
 - Exporte seus dados para **CSV** e **JSON**
-- Importe um backup JSON para restaurar o estado
+- Motor Assíncrono com **IndexedDB**: Performance garantida para milhares de dívidas e histórico, não causando engasgos (Jank) na renderização do cursor.
 - Use filtros, buscas e ordenação na tabela
 
 ---
@@ -29,7 +30,7 @@ Este dashboard permite que você:
    - **Backup JSON**: exportar tudo em JSON
    - **Restaurar**: importar arquivo JSON gerado por backup
 
-> 🔒 Os dados são salvos no `localStorage` do navegador. Fechar o navegador não apaga os dados.
+> 🔒 A base de dados principal roda internamente e assincronamente através do serviço `IndexedDB` do próprio navegador, suportando dados massivos e altíssima performance. Fechar a guia não apaga suas informações.
 
 ---
 
@@ -43,14 +44,18 @@ Este dashboard permite que você:
 
 ## 📌 Funcionalidades detalhadas
 
-### 📝 Cadastro e edição
-- Campos obrigatórios: **tipo**, **nome**, **valor**, **parcelas**, **descrição**
-- Permite editar registros existentes via modal de detalhes
+### 📝 Cadastro Inteligente (Drawer Off-Canvas)
+- Invés de espremer o conteúdo na lateral, os dados se abrem em uma "gaveta" deslizante que sai por cima de toda a interface.
+- Edições recuperam a janela sem travar seu *scrollbar* original.
 
-### 📊 Estatísticas e gráficos
-- Painel com totais de devedores, dívidas, valores e progresso geral
-- Gráfico de status (Aberto / Pagando / Pago)
-- Gráfico de top 5 valores (cores por tipo)
+### 👑 Tipografia & Acessibilidade Visual
+- Cores de fundo e opacidades foram padronizadas nas escalas da W3C.
+- Integração de vetores SVG puros através do pacote `Lucide Icons` no lugar de tradicionais emojis.
+
+### 📊 Estatísticas Funcionais (Gráficos)
+- Painel de totais com devedores e dívidas no topo.
+- Gráfico interativo "Doughnut" focando no ratio/volume entre **Dinheiro Entrante vs Saínte** (A Receber / A Pagar).
+- Gráfico de barras na horizontal facilitando o entendimento visual do **Top 5 Nomes mais custosos**.
 
 ### 🔎 Filtros e ordenação
 - Filtro por **nome**, **tipo** e **status**
@@ -89,24 +94,13 @@ http://localhost:8000
 
 ---
 
-## 🧩 Estrutura de Dados (localStorage)
+## 🧩 Arquitetura de Software (IndexedDB)
 
-Os dados são armazenados como um array de objetos no `localStorage` com a chave:
+A engine passou por refatoração de alta escala para sair do formato String/Síncrono do Storage para Promessas do IDB. Há scripts automáticos que processam essa migração retroativamente.
 
-- `debtManagerDebts`
-
-Cada registro tem, no mínimo:
-
-- `id`: número único
-- `tipo`: `devedor` ou `divida`
-- `nome`: nome do devedor/credor
-- `valor`: valor total
-- `parcelas`: número de parcelas
-- `parcelsPagas`: parcelas pagas
-- `desc`: descrição livre
-- `dataCriacao`: ISO string
-- `historico`: array com logs de ações
-
+- **Nome DB Principal**: `DebtManagerDB`
+- **Tabela**: `debtsStore` -> `main_records`
+- A estrutura de fallback em caso de bloqueio local mantém a aplicação responsiva rodando de forma pura e reativa na memória.
 ---
 
 ## ✅ Próximas melhorias sugeridas

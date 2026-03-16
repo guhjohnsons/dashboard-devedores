@@ -5,22 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Dashboard para gerenciamento de devedores e dívidas com controle de parcelas, exportação e histórico.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
     <title>Dashboard de Devedores/Dívidas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="app.js" defer></script>
 </head>
 
 <body>
     <div class="container">
         <header class="header">
-            <h1>📊 Dashboard de Devedores/Dívidas</h1>
+            <h1 class="page-title"><i data-lucide="layout-dashboard"></i> Dashboard de Devedores/Dívidas</h1>
             <div class="header-actions">
-                <button class="btn btn-primary" id="btnReset">🔄 Resetar</button>
-                <button class="btn btn-info" id="btnExportCsv">📥 Exportar CSV</button>
-                <button class="btn btn-info btn-info-alt" id="btnExportJson">💾 Backup JSON</button>
-                <button class="btn btn-info btn-info-alt" id="btnImport">📂 Restaurar</button>
+                <button class="btn btn-success" id="btnOpenNewDebt"><i data-lucide="plus-circle" class="btn-icon"></i> Novo Registro</button>
+                <button class="btn btn-primary" id="btnReset"><i data-lucide="rotate-cw" class="btn-icon"></i> Resetar</button>
+                <button class="btn btn-info" id="btnExportCsv"><i data-lucide="download" class="btn-icon"></i> Exportar CSV</button>
+                <button class="btn btn-info btn-info-alt" id="btnExportJson"><i data-lucide="database" class="btn-icon"></i> Backup JSON</button>
+                <button class="btn btn-info btn-info-alt" id="btnImport"><i data-lucide="folder-up" class="btn-icon"></i> Restaurar</button>
                 <input type="file" id="fileInput" accept=".json" style="display: none;">
             </div>
         </header>
@@ -58,47 +63,12 @@
             </div>
         </div>
 
-        <div class="grid">
-            <div class="card">
-                <h2>➕ Novo Cadastro</h2>
-                <form id="debtForm">
-                    <input type="hidden" id="editId">
-                    <div class="form-group">
-                        <label>Tipo *</label>
-                        <select id="tipo" required>
-                            <option value="devedor">Devedor (Eu recebo)</option>
-                            <option value="divida">Dívida (Eu pago)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Nome do Devedor/Credor *</label>
-                        <input type="text" id="nome" required placeholder="Ex: João Silva">
-                    </div>
-                    <div class="form-group">
-                        <label>Valor Total (R$) *</label>
-                        <input type="number" id="valor" required step="0.01" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Número de Parcelas *</label>
-                        <input type="number" id="parcelas" required min="1" placeholder="12">
-                    </div>
-                    <div class="form-group">
-                        <label>Descrição *</label>
-                        <textarea id="desc" required placeholder="Motivo da dívida..."></textarea>
-                    </div>
-                    <button type="submit" id="btnSubmitForm" class="btn btn-success"
-                        style="width: 100%">Cadastrar</button>
-                    <button type="button" id="btnCancelEdit" class="btn btn-danger"
-                        style="width: 100%; margin-top: 10px; display: none;">Cancelar
-                        Edição</button>
-                </form>
-            </div>
-
-            <div>
+        <div class="grid layout-full">
+            <div class="card-stack">
                 <div class="card" style="padding-bottom: 10px;">
                     <div class="filters-bar">
                         <div class="form-group">
-                            <input type="text" id="searchName" placeholder="🔍 Buscar por nome...">
+                            <input type="text" id="searchName" placeholder="Buscar por nome...">
                         </div>
                         <div class="form-group">
                             <select id="filterTipo">
@@ -111,7 +81,7 @@
                             <select id="filterStatus">
                                 <option value="todos">Todos os Status</option>
                                 <option value="aberto">Abertos e Pagando</option>
-                                <option value="pago">✅ Concluídos (Pagos)</option>
+                                <option value="pago">Concluídos (Pagos)</option>
                             </select>
                         </div>
                     </div>
@@ -119,7 +89,7 @@
 
                 <div class="card">
                     <div class="card-title-row">
-                        <h2>📋 Lista de Registros</h2>
+                        <h2><i data-lucide="clipboard-list" class="title-icon"></i> Lista de Registros</h2>
                     </div>
 
                     <div class="table-container">
@@ -138,7 +108,7 @@
                             <tbody id="debtTableBody"></tbody>
                         </table>
                         <div id="emptyState" class="empty-state" style="display: none;">
-                            <p>📝 Nenhuma dívida correspondente encontrada</p>
+                            <p><i data-lucide="file-x" class="empty-icon"></i><br>Nenhuma dívida correspondente encontrada</p>
                             <p>Verifique os filtros ou cadastre novas dívidas</p>
                         </div>
                     </div>
@@ -147,11 +117,51 @@
         </div>
     </div>
 
+    <!-- Modal Gaveta de Novo Cadastro -->
+    <div id="modalNewDebt" class="modal-overlay">
+        <div class="modal-content modal-content-side">
+            <div class="modal-header">
+                <h2><i data-lucide="plus-circle" class="title-icon"></i> <span id="newDebtTitle">Novo Cadastro</span></h2>
+                <button class="modal-close" id="btnCloseNewDebt">✕</button>
+            </div>
+            <form id="debtForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="tipo" required>
+                        <option value="devedor">Devedor (Eu recebo)</option>
+                        <option value="divida">Dívida (Eu pago)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nome do Devedor/Credor *</label>
+                    <input type="text" id="nome" required placeholder="Ex: João Silva">
+                </div>
+                <div class="form-group">
+                    <label>Valor Total (R$) *</label>
+                    <input type="number" id="valor" required step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Número de Parcelas *</label>
+                    <input type="number" id="parcelas" required min="1" placeholder="12">
+                </div>
+                <div class="form-group">
+                    <label>Descrição *</label>
+                    <textarea id="desc" required placeholder="Motivo da dívida..."></textarea>
+                </div>
+                <div class="modal-footer" style="padding-top: 15px; margin-top: 10px;">
+                    <button type="button" id="btnCancelEdit" class="btn btn-danger btn-action" style="display: none;">Cancelar</button>
+                    <button type="submit" id="btnSubmitForm" class="btn btn-success" style="flex: 1;">Cadastrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal de Detalhes da Dívida -->
     <div id="modalDetails" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🔍 Detalhes da Dívida</h2>
+                <h2><i data-lucide="search" class="title-icon"></i> Detalhes da Dívida</h2>
                 <button class="modal-close" id="btnCloseDetails">✕</button>
             </div>
             <div class="form-group"><strong>Tipo:</strong> <span id="detailTipo" class="status"></span></div>
@@ -167,13 +177,13 @@
             </div>
 
             <div style="margin-top: 25px;">
-                <h4 class="section-title">📜 Histórico Recente</h4>
+                <h4 class="section-title"><i data-lucide="history" class="title-icon"></i> Histórico Recente</h4>
                 <div id="historyList" class="history-list"></div>
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-primary btn-sm" id="btnEditDebt">✏️ Editar</button>
-                <button class="btn btn-danger btn-sm" id="btnDeleteDebt">🗑️ Deletar</button>
+                <button class="btn btn-primary btn-sm" id="btnEditDebt"><i data-lucide="edit-3" class="btn-icon"></i> Editar</button>
+                <button class="btn btn-danger btn-sm" id="btnDeleteDebt"><i data-lucide="trash-2" class="btn-icon"></i> Deletar</button>
             </div>
         </div>
     </div>

@@ -1,16 +1,69 @@
-let debts = JSON.parse(localStorage.getItem('debtManagerDebts')) || [];
+// Pilar 3: Banco de Dados IndexedDB Assíncrono para Escala Perfeita
+const DB_NAME = 'DebtManagerDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'debtsStore';
+
+let dbInstance = null;
+let debts = []; // Mantido globalmente para compatibilidade total com o modelo reativo de UI atual
 let currentDebtIndex = null;
 let charts = { status: null, values: null };
 let currentSort = { campo: null, direcao: 'asc' };
 
-// Garantir ID, histórico e dataCriacao
-debts = debts.map(d => {
-    if (!d.id) d.id = Date.now() + Math.floor(Math.random() * 1000);
-    if (!d.historico) d.historico = [];
-    if (!d.dataCriacao) d.dataCriacao = new Date().toISOString();
-    return d;
+// Engine IndexedDB Promisified
+const openDB = () => new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id_db' }); // key interna
+        }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
 });
-saveDebts();
+
+// Sync data on Startup
+const loadDataFromDB = async () => {
+    try {
+        dbInstance = await openDB();
+        
+        return new Promise((resolve) => {
+            const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.get('main_records');
+            
+            request.onsuccess = () => {
+                let data = request.result ? request.result.data : null;
+                
+                // Sistema de Migração Automática (Pega do LS se o IDB for novo e destrói o arquivo bloquante antigo)
+                if (!data) {
+                    const legacy = localStorage.getItem('debtManagerDebts');
+                    if (legacy) {
+                        data = JSON.parse(legacy);
+                        localStorage.removeItem('debtManagerDebts'); 
+                        console.log('Migração LocalStorage -> IndexedDB concluída.');
+                    }
+                }
+                
+                debts = data || [];
+                
+                // Valida Integridade
+                debts = debts.map(d => {
+                    if (!d.id) d.id = Date.now() + Math.floor(Math.random() * 1000);
+                    if (!d.historico) d.historico = [];
+                    if (!d.dataCriacao) d.dataCriacao = new Date().toISOString();
+                    return d;
+                });
+                
+                resolve();
+            };
+        });
+    } catch (err) {
+        console.error("Falha ao abrir IndexedDB: ", err);
+        // Fallback robusto se usuário bloquear Storage no Browser
+        debts = [];
+    }
+};
 
 const formatMoney = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -40,11 +93,13 @@ function addHistoryLog(debtIndex, actionMessage) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadDataFromDB(); // <--- Aguarda DB extrair antes do Bootstrap da Tela
     initEventListeners();
     renderDebts();
     updateStats();
     updateCharts();
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 });
 
 function initEventListeners() {
@@ -60,7 +115,16 @@ function initEventListeners() {
     document.getElementById('filterStatus').addEventListener('change', renderDebts);
     document.getElementById('filterTipo').addEventListener('change', renderDebts);
 
-    // Form
+    // Form & Drawers
+    document.getElementById('btnOpenNewDebt').addEventListener('click', () => {
+        document.getElementById('debtForm').reset();
+        document.getElementById('editId').value = '';
+        document.getElementById('newDebtTitle').textContent = 'Novo Cadastro';
+        document.getElementById('btnSubmitForm').textContent = 'Cadastrar';
+        document.getElementById('btnCancelEdit').style.display = 'none';
+        abrirModal('modalNewDebt');
+    });
+    document.getElementById('btnCloseNewDebt').addEventListener('click', () => fecharModal('modalNewDebt'));
     document.getElementById('debtForm').addEventListener('submit', handleDebtSubmit);
     document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
 
@@ -182,8 +246,8 @@ function renderDebts() {
             <td><small>${formatDateShort(debt.dataCriacao)}</small></td>
             <td>
                 <div style="display: flex; gap: 6px;">
-                    <button class="btn btn-success btn-sm btn-quick-add" data-index="${realIndex}" ${isPago ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>+1 Parc.</button>
-                    <button class="btn btn-info btn-sm btn-details" data-index="${realIndex}">👁️ Ver</button>
+                    <button class="btn btn-success btn-sm btn-quick-add" data-index="${realIndex}" aria-label="Adicionar 1 Parcela" ${isPago ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}><i data-lucide="plus-circle" class="btn-icon"></i> 1 Parc.</button>
+                    <button class="btn btn-info btn-sm btn-details" data-index="${realIndex}"><i data-lucide="eye" class="btn-icon"></i> Ver</button>
                 </div>
             </td>
         </tr>`;
@@ -203,6 +267,7 @@ function renderDebts() {
             adicionarParcela(index, 1);
         });
     });
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 10);
 }
 
 function updateStats() {
@@ -278,6 +343,7 @@ function handleDebtSubmit(e) {
     renderDebts();
     updateStats();
     updateCharts();
+    fecharModal('modalNewDebt');
 }
 
 function prepararEdicao() {
@@ -290,16 +356,19 @@ function prepararEdicao() {
     document.getElementById('parcelas').value = debt.parcelas;
     document.getElementById('desc').value = debt.desc;
     document.getElementById('btnSubmitForm').textContent = 'Salvar Alterações';
+    document.getElementById('newDebtTitle').textContent = 'Editar Registro';
     document.getElementById('btnCancelEdit').style.display = 'inline-block';
     fecharModal('modalDetails');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    abrirModal('modalNewDebt');
 }
 
 function cancelEdit() {
     document.getElementById('editId').value = '';
     document.getElementById('debtForm').reset();
     document.getElementById('btnSubmitForm').textContent = 'Cadastrar';
+    document.getElementById('newDebtTitle').textContent = 'Novo Cadastro';
     document.getElementById('btnCancelEdit').style.display = 'none';
+    fecharModal('modalNewDebt');
 }
 
 function verDetalhes(index) {
@@ -343,8 +412,8 @@ function renderPaymentControls() {
         <div id="parcelasContainer"></div>
         <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn btn-success btn-sm btn-action" id="btnAddParc">+ 1 Parcela</button>
-            <button class="btn btn-info btn-sm btn-action" id="btnFinish">✓ Quitar Tudo</button>
-            <button class="btn btn-danger btn-sm btn-action" id="btnUndo">⚠ Desfazer (-1)</button>
+            <button class="btn btn-info btn-sm btn-action" id="btnFinish"><i data-lucide="check-circle" class="btn-icon"></i> Quitar Tudo</button>
+            <button class="btn btn-danger btn-sm btn-action" id="btnUndo"><i data-lucide="rotate-ccw" class="btn-icon"></i> Desfazer (-1)</button>
         </div>
         <div style="margin-top: 15px; padding: 10px; background: rgba(15, 23, 42, 0.9); border-radius: 8px; border: 1px solid var(--border-subtle);">
             <strong>Status:</strong> <span class="status status-${status}">${status.toUpperCase()}</span>
@@ -368,14 +437,15 @@ function renderPaymentControls() {
     }
 
     renderParcelasGrid(pagas, total);
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 10);
 }
 
 function renderParcelasGrid(pagas, total) {
     const container = document.getElementById('parcelasContainer');
     container.innerHTML = Array.from({ length: total }).map((_, i) => {
         const isPaga = (i + 1) <= pagas;
-        return `<div style="display: inline-block; margin: 4px; padding: 6px 10px; border-radius: 6px; background: ${isPaga ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.05)'}; border: 1px solid ${isPaga ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.2)'}; font-size:12px;">
-            ${isPaga ? '✓' : '⏳'} #${i + 1}
+        return `<div style="display: inline-block; margin: 4px; padding: 6px 10px; border-radius: 6px; background: ${isPaga ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.05)'}; border: 1px solid ${isPaga ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.2)'}; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="${isPaga ? 'check' : 'clock'}" style="width:14px; height:14px;"></i> #${i + 1}
         </div>`;
     }).join('');
 }
@@ -453,8 +523,16 @@ function saveAndRefresh() {
     updateCharts();
 }
 
+// Assync DB Save Strategy Override 
 function saveDebts() {
-    localStorage.setItem('debtManagerDebts', JSON.stringify(debts));
+    if (!dbInstance) return;
+    try {
+        const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ id_db: 'main_records', data: debts });
+    } catch (e) {
+        console.error("Não foi possivel salvar no IndexedDB, rodando fallback. ", e);
+    }
 }
 
 function updateCharts() {
@@ -465,58 +543,84 @@ function updateCharts() {
     }
     container.style.display = 'block';
 
-    // Status Chart
-    const statusCounts = { aberto: 0, pagando: 0, pago: 0 };
-    debts.forEach(d => statusCounts[calcularStatus(d)]++);
+    // Balanço Chart (A Receber vs A Pagar)
+    let totalDevedores = 0;
+    let totalDividas = 0;
+    debts.forEach(d => {
+        if ((d.tipo || 'devedor') === 'devedor') totalDevedores += parseFloat(d.valor) || 0;
+        else totalDividas += parseFloat(d.valor) || 0;
+    });
 
     const ctxStatus = document.getElementById('chartStatus').getContext('2d');
     if (charts.status) charts.status.destroy();
     charts.status = new Chart(ctxStatus, {
         type: 'doughnut',
         data: {
-            labels: ['Aberto', 'Pagando', 'Pago'],
+            labels: ['Total a Receber', 'Total a Pagar'],
             datasets: [{
-                data: [statusCounts.aberto, statusCounts.pagando, statusCounts.pago],
-                backgroundColor: ['#4b5563', '#3b82f6', '#22c55e'],
-                borderColor: '#0f172a',
-                borderWidth: 2
+                data: [totalDevedores, totalDividas],
+                backgroundColor: ['#0ea5e9', '#f43f5e'],
+                borderColor: 'var(--bg-card)',
+                borderWidth: 3,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '70%',
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#9ca3af' } },
-                title: { display: true, text: 'Status dos Registros', color: '#e5e7eb' }
+                legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { family: 'Plus Jakarta Sans', size: 13 } } },
+                title: { display: true, text: 'Balanço Geral', color: '#f8fafc', font: { family: 'Outfit', size: 16 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + formatMoney(context.raw);
+                        }
+                    }
+                }
             }
         }
     });
 
-    // Values Chart (Top 5) — Cores por tipo (#11)
+    // Values Chart (Top 5) — Horizontal e com Nomes Completos
     const sorted = [...debts].sort((a, b) => b.valor - a.valor).slice(0, 5);
-    const barColors = sorted.map(d => (d.tipo || 'devedor') === 'devedor' ? '#06b6d4' : '#f43f5e');
+    const barColors = sorted.map(d => (d.tipo || 'devedor') === 'devedor' ? 'rgba(14, 165, 233, 0.8)' : 'rgba(244, 63, 94, 0.8)');
+    const barBorders = sorted.map(d => (d.tipo || 'devedor') === 'devedor' ? '#0ea5e9' : '#f43f5e');
     const ctxValues = document.getElementById('chartValues').getContext('2d');
+    
     if (charts.values) charts.values.destroy();
     charts.values = new Chart(ctxValues, {
         type: 'bar',
         data: {
-            labels: sorted.map(d => d.nome.split(' ')[0]),
+            labels: sorted.map(d => d.nome.length > 15 ? d.nome.substring(0,15)+'...' : d.nome),
             datasets: [{
                 label: 'Valor Total',
                 data: sorted.map(d => d.valor),
-                backgroundColor: barColors
+                backgroundColor: barColors,
+                borderColor: barBorders,
+                borderWidth: 1,
+                borderRadius: 4
             }]
         },
         options: {
+            indexAxis: 'y', // Gráfico Horizontal (melhor para leitura de nomes)
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+                y: { ticks: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans' } }, grid: { display: false } },
+                x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
             },
             plugins: {
                 legend: { display: false },
-                title: { display: true, text: 'Maiores Valores (Top 5) — 🟦 Devedor | 🟥 Dívida', color: '#e5e7eb' }
+                title: { display: true, text: 'Top 5 Maiores Registros', color: '#f8fafc', font: { family: 'Outfit', size: 16 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + formatMoney(context.raw);
+                        }
+                    }
+                }
             }
         }
     });
@@ -625,9 +729,10 @@ function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
+    toast.innerHTML = `<i data-lucide="${icon}"></i> <span>${message}</span>`;
     container.appendChild(toast);
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 10);
     setTimeout(() => toast.classList.add('show'), 100);
     setTimeout(() => {
         toast.classList.remove('show');
