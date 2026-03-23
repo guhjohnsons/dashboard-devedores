@@ -1,207 +1,365 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-
+<html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Dashboard para gerenciamento de devedores e dívidas com controle de parcelas, exportação e histórico.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
-    <title>Dashboard de Devedores/Dívidas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Dashboard de controle de devedores e dívidas com parcelas, histórico de pagamentos e exportação de dados.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <title>Dashboard Devedores</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="app.js" defer></script>
 </head>
-
 <body>
     <div class="container">
-        <header class="header">
-            <h1 class="page-title"><i data-lucide="layout-dashboard"></i> Dashboard de Devedores/Dívidas</h1>
-            <div class="header-actions">
-                <button class="btn btn-success" id="btnOpenNewDebt"><i data-lucide="plus-circle" class="btn-icon"></i> Novo Registro</button>
-                <button class="btn btn-primary" id="btnReset"><i data-lucide="rotate-cw" class="btn-icon"></i> Resetar</button>
-                <button class="btn btn-info" id="btnExportCsv"><i data-lucide="download" class="btn-icon"></i> Exportar CSV</button>
-                <button class="btn btn-info btn-info-alt" id="btnExportJson"><i data-lucide="database" class="btn-icon"></i> Backup JSON</button>
-                <button class="btn btn-info btn-info-alt" id="btnImport"><i data-lucide="folder-up" class="btn-icon"></i> Restaurar</button>
-                <input type="file" id="fileInput" accept=".json" style="display: none;">
+
+        <!-- Header -->
+        <header class="header" role="banner">
+            <h1 class="page-title">
+                <i data-lucide="clipboard-list" aria-hidden="true"></i>
+                Dashboard Devedores
+            </h1>
+
+            <div class="header-right">
+                <!-- Botões desktop -->
+                <div class="header-actions-desktop" role="toolbar" aria-label="Ações principais">
+                    <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Alternar tema">
+                        <i data-lucide="moon" id="themeIcon" aria-hidden="true"></i>
+                        <span id="themeLabel">Claro</span>
+                    </button>
+                    <button class="btn btn-success" id="btnOpenNewDebt" aria-label="Novo registro">
+                        <i data-lucide="plus-circle" class="btn-icon" aria-hidden="true"></i> Novo Registro
+                    </button>
+                    <button class="btn btn-primary" id="btnReset" aria-label="Zerar todos os dados">
+                        <i data-lucide="rotate-cw" class="btn-icon" aria-hidden="true"></i> Resetar
+                    </button>
+                    <button class="btn btn-info" id="btnExportCsv" aria-label="Exportar CSV">
+                        <i data-lucide="download" class="btn-icon" aria-hidden="true"></i> CSV
+                    </button>
+                    <button class="btn btn-info btn-info-alt" id="btnExportJson" aria-label="Backup JSON">
+                        <i data-lucide="database" class="btn-icon" aria-hidden="true"></i> JSON
+                    </button>
+                    <button class="btn btn-info btn-info-alt" id="btnImport" aria-label="Restaurar backup">
+                        <i data-lucide="folder-up" class="btn-icon" aria-hidden="true"></i> Restaurar
+                    </button>
+                </div>
+
+                <!-- Botão mobile → abre dropdown -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu de ações" aria-expanded="false" aria-controls="mobileDropdown">
+                    <i data-lucide="more-vertical" aria-hidden="true"></i>
+                </button>
+
+                <!-- Dropdown mobile -->
+                <div class="mobile-dropdown" id="mobileDropdown" role="menu" aria-label="Menu de ações">
+                    <button class="btn btn-success" id="btnOpenNewDebtMobile" style="border-radius:8px;" role="menuitem">
+                        <i data-lucide="plus-circle" class="btn-icon" aria-hidden="true"></i> Novo Registro
+                    </button>
+                    <button class="theme-toggle-btn" id="themeToggleMobile" style="width:100%;justify-content:flex-start;border-radius:8px;padding:10px 14px;" role="menuitem">
+                        <i data-lucide="moon" id="themeIconMobile" aria-hidden="true"></i>
+                        <span id="themeLabelMobile">Modo Claro</span>
+                    </button>
+                    <button class="btn btn-primary" id="btnResetMobile" style="border-radius:8px;" role="menuitem">
+                        <i data-lucide="rotate-cw" class="btn-icon" aria-hidden="true"></i> Resetar
+                    </button>
+                    <button class="btn btn-info" id="btnExportCsvMobile" style="border-radius:8px;" role="menuitem">
+                        <i data-lucide="download" class="btn-icon" aria-hidden="true"></i> Exportar CSV
+                    </button>
+                    <button class="btn btn-info btn-info-alt" id="btnExportJsonMobile" style="border-radius:8px;" role="menuitem">
+                        <i data-lucide="database" class="btn-icon" aria-hidden="true"></i> Backup JSON
+                    </button>
+                    <button class="btn btn-info btn-info-alt" id="btnImportMobile" style="border-radius:8px;" role="menuitem">
+                        <i data-lucide="folder-up" class="btn-icon" aria-hidden="true"></i> Restaurar
+                    </button>
+                </div>
+
+                <input type="file" id="fileInput" accept=".json" style="display: none;" aria-label="Arquivo JSON de backup">
             </div>
         </header>
 
-        <div class="chart-section card" style="display: none;" id="chartContainer">
+        <!-- Gráficos -->
+        <section class="chart-section" id="chartSection" style="display:none;" aria-label="Gráficos de análise">
             <div class="charts-grid">
-                <div class="chart-wrapper"><canvas id="chartStatus"></canvas></div>
-                <div class="chart-wrapper"><canvas id="chartValues"></canvas></div>
+                <div class="chart-card">
+                    <h4>Balanço Geral</h4>
+                    <div id="chartBalanceContainer" class="chart-wrapper">
+                        <canvas id="chartStatus" aria-label="Gráfico de balanço geral"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h4>Top 5 Maiores Registros</h4>
+                    <div id="chartValuesContainer" class="chart-wrapper">
+                        <canvas id="chartValues" aria-label="Gráfico de maiores registros"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h4>Progresso de Pagamentos</h4>
+                    <div id="chartProgressContainer" class="chart-wrapper">
+                        <canvas id="chartProgress" aria-label="Gráfico de progresso de pagamentos"></canvas>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="stats-grid">
+        <!-- Stats -->
+        <section class="stats-grid" id="statsGrid" aria-label="Estatísticas gerais">
             <div class="stat-card">
+                <div class="stat-icon count"><i data-lucide="users" aria-hidden="true"></i></div>
                 <h3 id="totalDevedores">0</h3>
                 <p>Devedores (Eu recebo)</p>
             </div>
             <div class="stat-card">
+                <div class="stat-icon pagar"><i data-lucide="credit-card" aria-hidden="true"></i></div>
                 <h3 id="totalDividas">0</h3>
                 <p>Dívidas (Eu pago)</p>
             </div>
             <div class="stat-card">
+                <div class="stat-icon receber"><i data-lucide="trending-up" aria-hidden="true"></i></div>
                 <h3 id="totalValor">R$ 0,00</h3>
                 <p>Total a Receber</p>
             </div>
             <div class="stat-card">
+                <div class="stat-icon pagar"><i data-lucide="trending-down" aria-hidden="true"></i></div>
                 <h3 id="totalPagar">R$ 0,00</h3>
                 <p>Total a Pagar</p>
             </div>
             <div class="stat-card">
+                <div class="stat-icon prog"><i data-lucide="check-circle" aria-hidden="true"></i></div>
                 <h3 id="parcelasProgresso">0/0</h3>
                 <p>Parcelas Pagas no Geral</p>
-                <div class="progress-container" style="height: 6px; margin-top: 6px;">
-                    <div id="progressGeral" class="progress-bar progress-bar-paid" style="width: 0%"></div>
+                <div class="progress-container">
+                    <div id="progressGeral" class="progress-bar progress-bar-paid" style="width:0%"></div>
                 </div>
             </div>
-        </div>
+        </section>
 
+        <!-- Tabela -->
         <div class="grid layout-full">
             <div class="card-stack">
-                <div class="card" style="padding-bottom: 10px;">
+                <!-- Filtros -->
+                <div class="card" style="padding-bottom:12px; margin-bottom:8px;">
                     <div class="filters-bar">
                         <div class="form-group">
-                            <input type="text" id="searchName" placeholder="Buscar por nome...">
+                            <input type="text" id="searchName" placeholder="Buscar por nome..." aria-label="Buscar por nome">
                         </div>
                         <div class="form-group">
-                            <select id="filterTipo">
+                            <select id="filterTipo" aria-label="Filtrar por tipo">
                                 <option value="todos">Todos os Tipos</option>
                                 <option value="devedor">Devedor (Eu recebo)</option>
                                 <option value="divida">Dívida (Eu pago)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <select id="filterStatus">
+                            <select id="filterStatus" aria-label="Filtrar por status">
                                 <option value="todos">Todos os Status</option>
                                 <option value="aberto">Abertos e Pagando</option>
                                 <option value="pago">Concluídos (Pagos)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <select id="filterCategoria" aria-label="Filtrar por categoria">
+                                <option value="todas">Todas as Categorias</option>
+                                <option value="pessoal">Pessoal</option>
+                                <option value="banco">Banco</option>
+                                <option value="cartao">Cartão</option>
+                                <option value="consorcio">Consórcio</option>
+                                <option value="outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:0;">
+                            <select id="filterLimit" class="limit-select" aria-label="Itens por página">
+                                <option value="10">10/pág.</option>
+                                <option value="25">25/pág.</option>
+                                <option value="50">50/pág.</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Lista -->
                 <div class="card">
                     <div class="card-title-row">
-                        <h2><i data-lucide="clipboard-list" class="title-icon"></i> Lista de Registros</h2>
+                        <h2><i data-lucide="list" class="title-icon" aria-hidden="true"></i> Lista de Registros</h2>
+                        <span id="recordCount" style="font-size:13px;color:var(--text-muted);font-weight:500;"></span>
                     </div>
 
                     <div class="table-container">
-                        <table id="debtTable">
+                        <table id="debtTable" aria-label="Lista de devedores e dívidas">
                             <thead>
                                 <tr>
                                     <th class="sortable" data-sort="nome">Nome <span class="sort-icon">⇅</span></th>
                                     <th>Tipo</th>
-                                    <th class="sortable" data-sort="valor">Valor Estimado <span class="sort-icon">⇅</span></th>
+                                    <th>Categoria</th>
+                                    <th class="sortable" data-sort="valor">Valor <span class="sort-icon">⇅</span></th>
                                     <th class="sortable" data-sort="progresso">Progresso <span class="sort-icon">⇅</span></th>
                                     <th>Status</th>
-                                    <th>Data Cadastro</th>
+                                    <th>Vencimento</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="debtTableBody"></tbody>
                         </table>
-                        <div id="emptyState" class="empty-state" style="display: none;">
-                            <p><i data-lucide="file-x" class="empty-icon"></i><br>Nenhuma dívida correspondente encontrada</p>
-                            <p>Verifique os filtros ou cadastre novas dívidas</p>
+
+                        <!-- Empty State -->
+                        <div id="emptyState" class="empty-state" style="display:none;" role="status">
+                            <i data-lucide="inbox" class="empty-icon" aria-hidden="true"></i>
+                            <p class="empty-state-title">Nenhum registro encontrado</p>
+                            <p class="empty-state-sub">Ajuste os filtros ou cadastre um novo devedor/dívida.</p>
+                            <button class="btn btn-success" id="btnEmptyNewDebt">
+                                <i data-lucide="plus-circle" class="btn-icon" aria-hidden="true"></i> Novo Registro
+                            </button>
                         </div>
+
+                        <!-- Paginação -->
+                        <div class="pagination-controls" id="paginationControls" role="navigation" aria-label="Paginação"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Gaveta de Novo Cadastro -->
-    <div id="modalNewDebt" class="modal-overlay">
+    <!-- Toast Container -->
+    <div id="toastContainer" role="status" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Modal: Novo / Editar Registro (Gaveta lateral) -->
+    <div id="modalNewDebt" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="newDebtTitle">
         <div class="modal-content modal-content-side">
             <div class="modal-header">
-                <h2><i data-lucide="plus-circle" class="title-icon"></i> <span id="newDebtTitle">Novo Cadastro</span></h2>
-                <button class="modal-close" id="btnCloseNewDebt">✕</button>
+                <h2><i data-lucide="plus-circle" class="title-icon" aria-hidden="true"></i> <span id="newDebtTitle">Novo Registro</span></h2>
+                <button class="modal-close" id="btnCloseNewDebt" aria-label="Fechar">✕</button>
             </div>
-            <form id="debtForm">
+            <form id="debtForm" novalidate>
                 <input type="hidden" id="editId">
-                <div class="form-group">
-                    <label>Tipo *</label>
-                    <select id="tipo" required>
-                        <option value="devedor">Devedor (Eu recebo)</option>
-                        <option value="divida">Dívida (Eu pago)</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tipo">Tipo *</label>
+                        <select id="tipo" required aria-label="Tipo">
+                            <option value="devedor">Devedor (Eu recebo)</option>
+                            <option value="divida">Dívida (Eu pago)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria">Categoria</label>
+                        <select id="categoria" aria-label="Categoria">
+                            <option value="pessoal">Pessoal</option>
+                            <option value="banco">Banco</option>
+                            <option value="cartao">Cartão</option>
+                            <option value="consorcio">Consórcio</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Nome do Devedor/Credor *</label>
-                    <input type="text" id="nome" required placeholder="Ex: João Silva">
+                    <label for="nome">Nome do Devedor/Credor *</label>
+                    <input type="text" id="nome" required placeholder="Ex: João Silva" aria-label="Nome">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valor">Valor Total (R$) *</label>
+                        <input type="number" id="valor" required step="0.01" min="0.01" placeholder="0,00" aria-label="Valor total">
+                    </div>
+                    <div class="form-group">
+                        <label for="parcelas">Nº de Parcelas *</label>
+                        <input type="number" id="parcelas" required min="1" placeholder="12" aria-label="Número de parcelas">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Valor Total (R$) *</label>
-                    <input type="number" id="valor" required step="0.01" placeholder="0.00">
+                    <label for="vencimento">Data de Vencimento (próxima parcela)</label>
+                    <input type="date" id="vencimento" aria-label="Data de vencimento">
                 </div>
                 <div class="form-group">
-                    <label>Número de Parcelas *</label>
-                    <input type="number" id="parcelas" required min="1" placeholder="12">
+                    <label for="desc">Descrição *</label>
+                    <textarea id="desc" required placeholder="Motivo da dívida ou observações..." aria-label="Descrição"></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Descrição *</label>
-                    <textarea id="desc" required placeholder="Motivo da dívida..."></textarea>
-                </div>
-                <div class="modal-footer" style="padding-top: 15px; margin-top: 10px;">
-                    <button type="button" id="btnCancelEdit" class="btn btn-danger btn-action" style="display: none;">Cancelar</button>
-                    <button type="submit" id="btnSubmitForm" class="btn btn-success" style="flex: 1;">Cadastrar</button>
+                <div class="modal-footer" style="padding-top:16px;margin-top:8px;">
+                    <button type="button" id="btnCancelEdit" class="btn btn-danger" style="display:none;">Cancelar</button>
+                    <button type="submit" id="btnSubmitForm" class="btn btn-success" style="flex:1;">
+                        <i data-lucide="save" class="btn-icon" aria-hidden="true"></i> Cadastrar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Detalhes da Dívida -->
-    <div id="modalDetails" class="modal-overlay">
-        <div class="modal-content">
+    <!-- Modal: Detalhes da Dívida -->
+    <div id="modalDetails" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
+        <div class="modal-content" style="max-width:560px;">
             <div class="modal-header">
-                <h2><i data-lucide="search" class="title-icon"></i> Detalhes da Dívida</h2>
-                <button class="modal-close" id="btnCloseDetails">✕</button>
+                <h2 id="detailsModalTitle"><i data-lucide="file-text" class="title-icon" aria-hidden="true"></i> Detalhes do Registro</h2>
+                <button class="modal-close" id="btnCloseDetails" aria-label="Fechar">✕</button>
             </div>
-            <div class="form-group"><strong>Tipo:</strong> <span id="detailTipo" class="status"></span></div>
-            <div class="form-group"><strong>Nome:</strong> <span id="detailNome"></span></div>
-            <div class="form-group"><strong>Valor Total:</strong> <span id="detailValor"></span></div>
-            <div class="form-group"><strong>Por Valor Parcela:</strong> <span id="detailValorParcela"></span></div>
-            <div class="form-group"><strong>Descrição:</strong> <span id="detailDesc"></span></div>
-            <div class="form-group"><strong>Data de Cadastro:</strong> <span id="detailDataCriacao"></span></div>
 
-            <div style="margin-top: 20px;">
-                <h4 class="section-title">Gerenciar Pagamentos</h4>
+            <div class="detail-row">
+                <span class="detail-label">Tipo</span>
+                <span class="detail-value"><span id="detailTipo" class="status"></span></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Categoria</span>
+                <span class="detail-value"><span id="detailCategoria" class="cat-tag"></span></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Nome</span>
+                <span class="detail-value" id="detailNome"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Valor Total</span>
+                <span class="detail-value" id="detailValor"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Valor por Parcela</span>
+                <span class="detail-value" id="detailValorParcela"></span>
+            </div>
+            <div class="detail-row" id="detailVencimentoRow">
+                <span class="detail-label">Próximo Vencimento</span>
+                <span class="detail-value" id="detailVencimento"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Descrição</span>
+                <span class="detail-value" id="detailDesc"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cadastrado em</span>
+                <span class="detail-value" id="detailDataCriacao"></span>
+            </div>
+
+            <!-- Gerenciar Pagamentos -->
+            <div style="margin-top:24px;">
+                <h4 class="section-title"><i data-lucide="check-square" class="title-icon" aria-hidden="true"></i> Gerenciar Pagamentos</h4>
                 <div id="paymentControls"></div>
             </div>
 
-            <div style="margin-top: 25px;">
-                <h4 class="section-title"><i data-lucide="history" class="title-icon"></i> Histórico Recente</h4>
-                <div id="historyList" class="history-list"></div>
+            <!-- Histórico -->
+            <div style="margin-top:24px;">
+                <h4 class="section-title"><i data-lucide="history" class="title-icon" aria-hidden="true"></i> Histórico Recente</h4>
+                <div id="historyList" class="history-list" role="log" aria-label="Histórico de pagamentos"></div>
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-primary btn-sm" id="btnEditDebt"><i data-lucide="edit-3" class="btn-icon"></i> Editar</button>
-                <button class="btn btn-danger btn-sm" id="btnDeleteDebt"><i data-lucide="trash-2" class="btn-icon"></i> Deletar</button>
+                <button class="btn btn-primary btn-sm" id="btnEditDebt">
+                    <i data-lucide="edit-3" class="btn-icon" aria-hidden="true"></i> Editar
+                </button>
+                <button class="btn btn-danger btn-sm" id="btnDeleteDebt">
+                    <i data-lucide="trash-2" class="btn-icon" aria-hidden="true"></i> Excluir
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Confirmação Genérico -->
-    <div id="modalConfirm" class="modal-overlay">
+    <!-- Modal: Confirmação -->
+    <div id="modalConfirm" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
         <div class="modal-content modal-confirm-content">
-            <h2 id="confirmTitle">Configurações</h2>
+            <span class="confirm-icon">⚠️</span>
+            <h2 id="confirmTitle">Confirmar</h2>
             <p id="confirmMessage" class="confirm-message"></p>
             <div class="confirm-actions">
-                <button class="btn btn-danger" id="confirmBtnCancel">Cancelar</button>
-                <button class="btn btn-success" id="confirmBtnOk">Confirmar</button>
+                <button class="btn btn-danger" id="confirmBtnCancel" style="flex:1;">Cancelar</button>
+                <button class="btn btn-success" id="confirmBtnOk" style="flex:1;">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="toastContainer"></div>
-
 </body>
-
 </html>
